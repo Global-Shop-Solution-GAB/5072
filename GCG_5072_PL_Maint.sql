@@ -1,0 +1,7 @@
+CREATE TABLE "GCG_5072_PL_Maint"(
+ "Product_Line" CHAR(2),
+ "PL_Alpha" CHAR(4),
+ "Last_Chg_By" CHAR(8),
+ "Last_PL_Serial" CHAR(30));
+
+CREATE UNIQUE NOT MODIFIABLE INDEX "PRODUCT_LINEK00" USING 0 ON "GCG_5072_PL_Maint"("Product_Line");
