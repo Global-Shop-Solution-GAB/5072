@@ -1,0 +1,120 @@
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+
+	f.Intrinsic.Control.If(v.Caller.Hook,=,31825)
+			F.Intrinsic.Control.CallSub(Attach_Serial)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.CallSub(Exit)
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_Serial.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(Exit)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.Exit.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+
+	F.Intrinsic.Control.If(V.ODBC.Connection!Con.State,=,1)
+		F.ODBC.Connection!Con.Close
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.End
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_Serial.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Exit.End
+
+Program.Sub.Attach_Serial.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	V.Local.i.Declare(Long,0)
+	V.Local.sSql.Declare(String,"")
+	V.Local.sRet.Declare(String,"")
+	V.Local.sSerial.Declare(String,"")
+	V.Local.sWO.Declare(String,"")
+	V.Local.sSuffix.Declare(String,"")
+	V.Local.sPL.Declare(String,"")
+	
+	V.Local.sWO.Set(V.Passed.009000)
+	V.Local.sSuffix.Set(V.Passed.009001)
+	
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	
+	'query to see if the company option to attach manual serial numbers is turned on, if it is not, end the program.
+	F.Intrinsic.String.Build("select F_BOOLEAN from V_OP_HEADER where ID = '{0}'","401137",v.Local.sSql)
+	F.ODBC.Connection!Con.ExecuteAndReturn(v.Local.sSql,v.Local.sRet)
+	F.Intrinsic.Control.If(v.Local.sRet.Trim,=,"0")
+		F.Intrinsic.UI.Msgbox("The company option to allow manual serial numbers is not activated.")
+		F.Intrinsic.Control.CallSub(Exit)
+		
+	F.Intrinsic.Control.Else
+		'Loads name of BDF and ID into memory
+	    Function.Intrinsic.BDF.Load("AUX001","AUX001")
+	    
+	    F.Intrinsic.String.Build("Select Product_Line From V_Job_Header Where Job = '{0}' and Suffix = '{1}'",V.Local.sWO,V.Local.sSuffix,V.Local.sSql)
+	    F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSql,V.Local.sPL)
+	    
+		F.Intrinsic.Control.For(V.Local.i,1,V.Passed.000026.Long,1)
+			F.Intrinsic.String.Build("Select Rtrim(Last_PL_Serial) as Last_Serial, PL_Alpha From GCG_5072_PL_Maint Where Product_Line = '{0}'",V.Local.sPL,V.Local.sSql)
+			F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSql,V.Local.sRet)
+			
+			F.Intrinsic.String.Split(V.Local.sRet,"*!*",V.Local.sRet)
+			F.Intrinsic.Control.If(V.Local.sRet(0),=,"")
+				V.Local.sSerial.Set("000001")
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Mid(V.Local.sRet(0),5,V.Local.sRet(0).Length,V.Local.sSerial)
+				F.Intrinsic.Math.Add(V.Local.sSerial.Long,1,V.Local.sSerial)
+				F.Intrinsic.String.LPad(V.Local.sSerial,"0",6,V.Local.sSerial)
+			F.Intrinsic.Control.EndIf
+			F.Intrinsic.String.Build("{0}{1}",V.Local.sRet(1),V.Local.sSerial,V.Local.sSerial)
+			F.Intrinsic.String.Build("Update GCG_5072_PL_Maint Set Last_PL_Serial = '{0}' Where Product_Line = '{1}'",V.Local.sSerial.Trim,V.Local.sPL,V.Local.sSql)
+			F.ODBC.Connection!Con.Execute(V.Local.sSql)
+			F.Intrinsic.String.Build("{0}|~|",V.Local.sSerial,V.Local.sRet)
+			Function.Intrinsic.BDF.WriteRow("AUX001",V.Local.sRet)
+		    
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000082,"LOCK","1")
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000022,"LOCK","1")
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000023,"LOCK","1")
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000024,"LOCK","1")
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000025,"LOCK","1") 
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.AUX001,"LOCK","1") 
+			F.Intrinsic.UI.ChangeCallerProperty(v.Passed.000030,"LOCK","1") 
+		    
+			v.Passed.000027.Set(V.Passed.000026)
+		F.Intrinsic.Control.Next(V.Local.i)
+		
+		Function.Intrinsic.BDF.Save("AUX001","AUX001")
+		
+	F.Intrinsic.Control.EndIf
+	
+	F.ODBC.Connection!Con.Close
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_Serial.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(Exit)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Attach_Serial.End
