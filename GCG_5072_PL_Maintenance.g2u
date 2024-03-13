@@ -1,0 +1,287 @@
+Program.Sub.ScreenSU.Start
+Gui.FormPLMaint..Create
+Gui.FormPLMaint..Caption("Product Line Alpha Numberic Maintence")
+Gui.FormPLMaint..Size(12450,10635)
+Gui.FormPLMaint..MinX(0)
+Gui.FormPLMaint..MinY(0)
+Gui.FormPLMaint..Position(0,0)
+Gui.FormPLMaint..BackColor(-2147483633)
+Gui.FormPLMaint..MousePointer(0)
+Gui.FormPLMaint..Event(UnLoad,FormPLMaint_UnLoad)
+Gui.FormPLMaint.GsGridControlPL.Create(GsGridControl)
+Gui.FormPLMaint.GsGridControlPL.Size(12030,9375)
+Gui.FormPLMaint.GsGridControlPL.Position(105,150)
+Gui.FormPLMaint.GsGridControlPL.Event(CellValueChanged,GsGridControlPL_CellValueChanged)
+Gui.FormPLMaint.GsGridControlPL.Event(MouseCellEnter,GsGridControlPL_MouseCellEnter)
+Gui.FormPLMaint.cmdSave.Create(Button)
+Gui.FormPLMaint.cmdSave.Size(855,375)
+Gui.FormPLMaint.cmdSave.Position(105,9735)
+Gui.FormPLMaint.cmdSave.Caption("Save")
+Gui.FormPLMaint.cmdSave.Event(Click,cmdSave_Click)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+V.Global.sCellValue.Declare(String,"")
+V.Global.sSerial.Declare(String,"")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+
+	'coded by rlk
+	'this is the maintenance program to allow users to set the 4 char alpha PL Code.
+	
+	'setting anchors on the screen
+	F.Intrinsic.Control.CallSub(Set_Anchors)
+	'popoulating data 
+	F.Intrinsic.Control.CallSub(Get_Data)
+	'setting properties
+	F.Intrinsic.Control.CallSub(Set_Properties)
+	
+	Gui.FormPLMaint..Show
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.FormPLMaint_UnLoad.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+
+	'checking if connection is stil open
+	F.Intrinsic.Control.If(V.ODBC.Connection!Con.State,=,1)
+		'closing connection
+		F.ODBC.Connection!Con.Close
+	F.Intrinsic.Control.EndIf
+	'ending program
+	F.Intrinsic.Control.End
+
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.FormPLMaint_UnLoad.End
+
+Program.Sub.Get_Data.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	V.Local.sSql.Declare(String,"")
+	'opening company connection
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	'query to get data
+	V.Local.sSql.Set("Select a.Product_Line, Product_Line_Desc, Product_Line_Name, PL_Alpha, Last_Chg_By, Last_PL_Serial From V_Product_Line a Left Join GCG_5072_PL_Maint b on a.Product_Line = b.Product_Line Order by a.Product_Line")
+	'creating pl datatable
+	F.Data.DataTable.CreateFromSQL("PL","Con",V.Local.sSql,True)
+	'closing connection
+	F.ODBC.Connection!Con.Close
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Get_Data.End
+
+Program.Sub.Set_Properties.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	'attaching datatable to grid
+	Gui.FormPLMaint.GsGridControlPL.AddGridviewFromDatatable("GPL","PL")
+	'setting properties
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","allowedit",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","readonly",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","Caption","Product Line")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","MinWidth","50")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","Width","50")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","allowedit",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","readonly",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","Caption","4 Char Product Line")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","MinWidth","60")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","Width","60")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","allowedit",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","readonly",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","Caption","Product Line Description")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","MinWidth","110")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","Width","110")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","allowedit",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","readonly",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","Caption","Product Line Name")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","MinWidth","110")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","Width","110")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","allowedit",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","readonly",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","Visible",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","Caption","Last Changed By")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","MinWidth","60")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","Width","60")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","allowedit",True)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","readonly",False)
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","Caption","Last PL Serial")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","MinWidth","70")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","Width","70")
+	
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line","HeaderForeColor","White")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","PL_Alpha","HeaderForeColor","White")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Desc","HeaderForeColor","White")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Product_Line_Name","HeaderForeColor","White")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_Chg_By","HeaderForeColor","White")
+	
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","HeaderBackColor","Green")
+	Gui.FormPLMaint.GsGridControlPL.SetColumnProperty("GPL","Last_PL_Serial","HeaderForeColor","White")
+			
+	'setting gridview to grid
+	Gui.FormPLMaint.GsGridControlPL.MainView("GPL")
+	
+	Gui.FormPLMaint.cmdSave.Enabled(False)
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Set_Properties.End
+
+Program.Sub.cmdSave_Click.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	
+	'opening company connection
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	'saving records
+	F.Data.DataTable.SaveToDB("PL","con","GCG_5072_PL_Maint","Product_Line",256,"Product_Line@!@Product_Line*!*PL_Alpha@!@PL_Alpha*!*Last_Chg_By@!@Last_Chg_By*!*Last_PL_Serial@!@Last_PL_Serial")
+	'closing connection
+	F.ODBC.Connection!Con.Close
+	
+	Gui.FormPLMaint.cmdSave.Enabled(False)
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.cmdSave_Click.End
+
+Program.Sub.GsGridControlPL_CellValueChanged.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	
+	'checking if the pl alpha is changed, its the only editable column on the grid
+	F.Intrinsic.Control.If(V.Args.Column.UCase,=,"PL_ALPHA")
+		F.Intrinsic.Control.If(V.Args.Value.Length,>,4)
+			F.Intrinsic.UI.Msgbox("Product Line Alpha Value cannot exceed 4 Characters in length.......","Warning")
+			Gui.FormPLMaint.GsGridControlPL.SetCellValue("GPL",3,V.Args.RowIndex,V.Global.sCellValue)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	
+		'setting current user to the changed by in the grid
+		Gui.FormPLMaint.GsGridControlPL.SetCellValue("GPL",4,V.Args.RowIndex,V.Caller.User)
+		'enabling the save if a valid change has been made
+		Gui.FormPLMaint.cmdSave.Enabled(True)
+	F.Intrinsic.Control.EndIf
+	
+	'checking if the Serial is changed, its the only editable column on the grid
+	F.Intrinsic.Control.If(V.Args.Column.UCase,=,"LAST_PL_SERIAL")
+		F.Intrinsic.Control.If(V.Args.Value.Length,>,10)
+			F.Intrinsic.UI.Msgbox("Last PL Serial cannot exceed 10 Characters in length.......","Warning")
+			Gui.FormPLMaint.GsGridControlPL.SetCellValue("GPL",5,V.Args.RowIndex,V.Global.sSerial)
+			F.Intrinsic.Control.ExitSub
+		F.Intrinsic.Control.EndIf
+	
+		'setting current user to the changed by in the grid
+		Gui.FormPLMaint.GsGridControlPL.SetCellValue("GPL",4,V.Args.RowIndex,V.Caller.User)
+		'enabling the save if a valid change has been made
+		Gui.FormPLMaint.cmdSave.Enabled(True)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.GsGridControlPL_CellValueChanged.End
+
+Program.Sub.GsGridControlPL_MouseCellEnter.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	V.Local.iRet.Declare(Long,0)
+	
+	'checking if cellvaluechange event is in the call stack this keeps the program from updating the cell value global variable
+	F.Intrinsic.Control.IsInCallstack(GsGridControlPL_CellValueChanged,V.Local.iRet)
+	
+	F.Intrinsic.Control.If(V.Local.iRet,>=,1)
+		'exiting the sub if cell value change is in the call stack
+		F.Intrinsic.Control.ExitSub
+	F.Intrinsic.Control.EndIf
+	
+	'setting global cell value to the current cell value in the pl alpha cell
+	'this is used if a invalid entry is made, the program will set this value back to the grid 
+	F.Intrinsic.Control.If(V.Args.Column,=,3)
+		Gui.FormPLMaint.GsGridControlPL.GetCellValueByColumnName("GPL","PL_Alpha",V.Args.Row,V.Global.sCellValue)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.If(V.Args.Column,=,5)
+		Gui.FormPLMaint.GsGridControlPL.GetCellValueByColumnName("GPL","Last_PL_Serial",V.Args.Row,V.Global.sSerial)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.GsGridControlPL_MouseCellEnter.End
+
+Program.Sub.Set_Anchors.Start
+F.Intrinsic.Control.Try
+	V.Local.sError.Declare(String,"")
+	
+	Gui.FormPLMaint.cmdSave.Anchor(6)
+	Gui.FormPLMaint.GsGridControlPL.Anchor(15)
+	
+	F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Catch
+	F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+		F.Intrinsic.String.Build("Project: {0}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}","GCG_5072_PL_Maintenance.g2u",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.CallSub(FormPLMaint_UnLoad)
+	F.Intrinsic.Control.EndIf
+Function.Intrinsic.Control.EndTry
+Program.Sub.Set_Anchors.End
